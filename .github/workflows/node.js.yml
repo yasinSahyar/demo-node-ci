@@ -11,53 +11,30 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # setting environment variables, if needed
     env:
-      NODE_ENV: test
-      DB_HOST: localhost
-      DB_PORT: 3306
-      DB_NAME: cicdtest
-      DB_USER: cicduser
-      DB_PASSWORD: cicdpass
+      NODE_ENV: development
+    runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [22.x, 24.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-
-      - name: Install and start MySQL
-        run: |
-          sudo DEBIAN_FRONTEND=noninteractive apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server
-          sudo systemctl enable mysql
-          sudo systemctl start mysql
-
-      - name: Fix root password and authentication
-        run: |
-          sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';"
-
-      - name: Setup database and user
-        run: |
-          echo "Creating database and user..."
-          sudo mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
-          sudo mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';"
-          sudo mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';"
-          sudo mysql -e "FLUSH PRIVILEGES;"
-          mysql -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < db/create-db.sql
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build project
-        run: npm run build --if-present
-
-      - name: Run tests
-        run: npm test
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Setup Mysql
+      run: |
+        sudo systemctl start mysql
+        cp .env.sample .env
+        mysql -u root -proot < db/create-db.sql 
+    - name: Use Node.js ${{ matrix.node-version }} in ${{env.NODE_ENV}} mode
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - run: npm ci
+    - run: ls
+    - run: npm run build --if-present
+    - run: npm run test
