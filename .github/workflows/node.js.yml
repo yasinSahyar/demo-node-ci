@@ -14,14 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_ENV: test
-      DB_HOST: ${{ secrets.DB_HOST }}
-      DB_PORT: ${{ secrets.DB_PORT }}
-      DB_NAME: ${{ secrets.DB_NAME }}
-      DB_USER: ${{ secrets.DB_USER }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_HOST: localhost
+      DB_PORT: 3306
+      DB_NAME: cicdtest
+      DB_USER: cicduser
+      DB_PASSWORD: cicdpass
     strategy:
       matrix:
-        node-version: [18.x, 20.x] # Projeye uygun Node.js sürümleri
+        node-version: [18.x, 20.x]
 
     steps:
       - name: Checkout repository
@@ -39,16 +39,19 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server
           sudo systemctl enable mysql
           sudo systemctl start mysql
-          # `status` komutu kaldırıldı, böylece runner iptali engellendi
 
-      - name: Setup database
+      - name: Fix root password and authentication
+        run: |
+          sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';"
+
+      - name: Setup database and user
         run: |
           echo "Creating database and user..."
-          sudo mysql -e "CREATE DATABASE IF NOT EXISTS ${{ secrets.DB_NAME }};"
-          sudo mysql -e "CREATE USER IF NOT EXISTS '${{ secrets.DB_USER }}'@'localhost' IDENTIFIED BY '${{ secrets.DB_PASSWORD }}';"
-          sudo mysql -e "GRANT ALL PRIVILEGES ON ${{ secrets.DB_NAME }}.* TO '${{ secrets.DB_USER }}'@'localhost';"
+          sudo mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
+          sudo mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';"
+          sudo mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';"
           sudo mysql -e "FLUSH PRIVILEGES;"
-          mysql -u ${{ secrets.DB_USER }} -p${{ secrets.DB_PASSWORD }} ${{ secrets.DB_NAME }} < db/create-db.sql
+          mysql -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < db/create-db.sql
 
       - name: Install dependencies
         run: npm ci
