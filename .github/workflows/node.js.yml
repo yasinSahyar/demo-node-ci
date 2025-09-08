@@ -35,23 +35,19 @@ jobs:
 
       - name: Install and start MySQL
         run: |
-          # Interaktif promptları engelle
           sudo DEBIAN_FRONTEND=noninteractive apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server
-          # MySQL servisini başlat ve enable et
           sudo systemctl enable mysql
           sudo systemctl start mysql
-          sudo systemctl status mysql
+          # `status` komutu kaldırıldı, böylece runner iptali engellendi
 
       - name: Setup database
         run: |
           echo "Creating database and user..."
-          # Root şifresi olmadan DB ve user oluştur
           sudo mysql -e "CREATE DATABASE IF NOT EXISTS ${{ secrets.DB_NAME }};"
           sudo mysql -e "CREATE USER IF NOT EXISTS '${{ secrets.DB_USER }}'@'localhost' IDENTIFIED BY '${{ secrets.DB_PASSWORD }}';"
           sudo mysql -e "GRANT ALL PRIVILEGES ON ${{ secrets.DB_NAME }}.* TO '${{ secrets.DB_USER }}'@'localhost';"
           sudo mysql -e "FLUSH PRIVILEGES;"
-          # Seed database using created user
           mysql -u ${{ secrets.DB_USER }} -p${{ secrets.DB_PASSWORD }} ${{ secrets.DB_NAME }} < db/create-db.sql
 
       - name: Install dependencies
